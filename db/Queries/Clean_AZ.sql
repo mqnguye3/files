@@ -1,0 +1,14 @@
+DROP TABLE Store; 
+DROP TABLE Inventory; 
+DROP TABLE Purchase;	
+DROP TABLE Account_payable; 
+DROP TABLE PurchasePaymentRecord; 
+DROP TABLE Sales;
+DROP TABLE Person;  	
+DROP TABLE Skill;
+DROP TABLE Job; 
+DROP TABLE Position;
+DROP TABLE Works;
+DROP TABLE Requires;
+DROP TABLE Has_experience;
+DROP TABLE Job_info;

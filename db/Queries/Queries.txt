@@ -1,0 +1,424 @@
+﻿Queries
+
+
+AZ + GV: 
+
+
+1. -- List the workers by names in the alphabetical order of last names. ✓
+
+SELECT last_name, first_name
+FROM Person NATURAL JOIN Works
+WHERE end_date IS NULL
+ORDER BY last_name;
+
+
+
+
+
+
+2. -- List the staff (salary workers) by salary in descending order        ✓
+
+SELECT per_id, pay_rate
+FROM Works NATURAL JOIN Job
+WHERE pay_type = 'Salary'
+AND end_date IS NULL
+ORDER BY pay_rate DESC;
+
+
+
+
+3. -- List the average annual pay (the salary or wage rates multiplying by 1920 hours) of each store/factory in descending order. ✓
+
+
+AZ: ✓
+
+
+WITH annual_pay AS
+  (
+    SELECT store_id, SUM(pay_rate) AS person_salary
+    FROM Job NATURAL JOIN Store
+    WHERE pay_type = 'Salary' 
+    GROUP BY store_id
+  )
+SELECT store_id, SUM(person_salary) as total
+FROM annual_pay
+ORDER BY total DESC;
+
+
+GV
+WITH annual_pay AS
+  (
+    SELECT fac_id, SUM(pay_rate) AS person_salary
+    FROM Job NATURAL JOIN Store
+    WHERE pay_type = 'Salary' 
+    GROUP BY store_id
+  )
+  SELECT fac_id, SUM(person_salary) as total
+  FROM annual_pay
+  ORDER BY total DESC;
+
+
+
+
+4. --  List the required skills of a given pos code in a readable format.     ✓
+
+SELECT sk_code, pos_code
+FROM Requires NATURAL JOIN Skill;
+
+
+5. -- Given a person’s identifier, list this person’s skills in a readable format. ✓
+
+
+SELECT per_id, title
+FROM Has_experience NATURAL JOIN Person
+WHERE per_id = 1;
+
+
+You manually enter the per_id, You have to enter a persons ID in order to return his skills.
+
+
+6. Given a person’s identifier, list a person’s missing skills for a specific pos code in a readable format.        ✓
+
+
+SELECT sk_code, title
+FROM Requires NATURAL JOIN Has_experience
+EXCEPT
+SELECT sk_code, title
+FROM Has_experience 
+WHERE per_id = 1;
+
+
+
+
+
+
+
+
+7. List the total number and the total sales ($) of every item in a given period of time (start date, end date) in AZ in the descending order of sales.        ✓
+
+
+SELECT item_num,quantity,price * quantity as total
+FROM Sales
+WHERE date_sold BETWEEN 20180101 AND 20181212
+ORDER BY total DESC;
+
+
+
+
+8. List the item num, its title and the total profit that made the biggest profit for AZ in 2018. ✓
+
+
+SELECT item_num, note, MAX(quantity * price)
+FROM Sales
+WHERE date_sold BETWEEN 20180101 AND 20181231;
+
+
+
+
+‘Note’ has the title of the item inside of it
+
+
+
+
+
+
+9. Show the items for which the inventory is below the minimum level in AZ system ✓
+
+
+SELECT item_num , title
+FROM inventory
+WHERE min_level >= quantity;
+
+
+OR A MORE DETAILED VERSION THAT TAKES WHAT HAS BEEN SOLD INTO ACCOUNT
+
+
+SELECT item_num, quantity
+FROM Inventory
+WHERE quantity - (SELECT quantity
+                  FROM   Sales
+                  WHERE item_num = item_num) < min_level;
+
+
+
+
+
+
+
+
+
+
+10. List the total sales in dollar to each customer of GV in 2018. ✓
+
+
+SELECT cus_id, date_started, sales_amount as total_sales
+FROM Contract
+WHERE date_started BETWEEN 20180101 AND 20181231;
+
+
+
+
+
+
+
+
+11. Show m code, m name of the material(s) that GV purchased the most (measured by quantity) in the fourth quarter of 2018. ✓
+
+
+WITH max AS 
+(
+  SELECT MAX(quantity), m_code, m_name, book_date
+  FROM Material NATURAL JOIN Purchase
+)
+SELECT m_code, m_name
+FROM Max
+WHERE book_date BETWEEN 20181001 AND 20181231;
+
+
+
+
+
+
+12. Show the factory name that made the most total quantity of the product that was sold the most in 2018.
+
+
+WITH max_quantity AS
+(
+        SELECT fac_id,p_code, MAX(quantity) as total_produced
+        FROM makes
+        GROUP BY p_code
+)
+SELECT fac_id,p_code,total_produced,Max(amount)
+FROM max_quantity NATURAL JOIN Has_sold
+WHERE date_sold BETWEEN 20180101 AND 20181231;
+
+
+
+
+----------------------LD-------------------
+
+
+13. Given a person’s identifier, find all the jobs this person is currently holding and worked in the past. ✓
+
+
+SELECT per_id, name, title, start_date, end_date;
+FROM person, works, job, position;
+WHERE pos_code = X;
+
+
+Or
+
+
+SELECT per_id, sk_code, title
+FROM Has_Skill NATURAL JOIN Skill
+WHERE per_id = 10;
+
+
+
+
+
+
+
+
+14. In a local or national crisis, we need to find all the people who once held a position of the given pos code. List per id, name, job title and the years the person worked in (starting year and ending year). ✓
+
+
+SELECT per_id, last_name, first_name, title, start_date, end_date 
+FROM position NATURAL JOIN works NATURAL JOIN person
+WHERE pos_code = 'P010'
+AND end_date IS NOT NULL
+GROUP BY per_id;
+
+
+
+
+15. Find all the unemployed people who once held a job position of the given pos code ✓
+
+
+WITH unemployed AS
+(
+          SELECT per_id
+          FROM Works
+          EXCEPT
+          SELECT per_id
+          FROM Works NATURAL JOIN Position
+          WHERE end_date is NULL
+ )
+ SELECT per_id, pos_code, title
+ FROM unemployed NATURAL JOIN Position NATURAL JOIN Works
+ WHERE pos_code = 'P005'
+ GROUP BY per_id;
+
+
+
+
+16. . List the average, maximum and minimum annual pay (total salaries or wage rates multiplying by 1920 hours) of each industry (listed in GICS) in the order of the industry names ✓
+
+
+
+
+WITH avg_pay AS 
+(
+         SELECT Company, AVG(pay_rate) as avg_payrate
+          FROM Job NATURAL JOIN Company
+          GROUP BY Company
+),
+max_pay AS 
+(
+          SELECT Company, MAX(pay_rate) as max_payrate
+          FROM Job NATURAL JOIN Company
+          GROUP BY Company
+),
+min_pay AS 
+(
+          SELECT Company, MIN(pay_rate) as min_payrate
+          FROM Job NATURAL JOIN Company
+          GROUP BY Company
+)
+SELECT industry_group, avg_payrate, max_payrate, min_payrate
+FROM avg_pay NATURAL JOIN max_pay NATURAL JOIN min_pay NATURAL JOIN company
+GROUP BY industry_group
+ORDER BY industry_group DESC;
+
+
+
+
+
+
+17. WITH biggest_employer AS
+(
+          SELECT Company,count(per_id) as company_workers
+        FROM Job NATURAL JOIN Works
+          WHERE end_date is NULL
+),
+biggest_industry AS
+(
+          SELECT industry_group,count(per_id) as industry_workers
+        FROM Job NATURAL JOIN Works NATURAL JOIN Company
+          WHERE end_date is NULL
+),
+biggest_subindustry AS
+(
+         SELECT sub_industry,count(per_id) as subindustry_workers
+        FROM Job NATURAL JOIN Works NATURAL JOIN Company
+          WHERE end_date is NULL
+)
+SELECT Company, company_workers
+FROM biggest_employer;
+-----------------------------------------------------------------------------------------------
+************SAME AS ABOVE BUT SWAP OUT  COMPANY WITH INDUSTY***********
+SELECT industry_group, industry_workers
+FROM biggest_industry;
+------------------------------------------------------------------------------
+********SAME AS ABOVE BUT SWAP OUT  COMPANY WITH SUBINDUSTY***********
+
+SELECT sub_industry, subindustry_workers
+FROM biggest_subindustry;
+
+
+
+
+
+
+
+
+18.  Find out the job distribution among industries by showing the number of employees in each industry
+
+
+WITH industry_distribution AS
+(
+	SELECT COUNT(per_id) AS industry_worker, industry_group
+        FROM Works NATURAL JOIN Job NATURAL JOIN Company
+        WHERE end_date IS NULL
+        GROUP BY industry_group
+)
+SELECT industry_worker, industry_group
+FROM industry_distribution NATURAL JOIN Company;
+
+
+
+
+
+
+
+
+19. 
+WITH missing_skills AS 
+(
+	SELECT sk_code 
+    	FROM requires
+    	WHERE pos_code = 'P003'
+    	EXCEPT
+    	SELECT sk_code
+    	FROM has_skill
+    	WHERE per_id = 30
+)
+SELECT c_code, title
+FROM Teaches NATURAL JOIN Course NATURAL JOIN Requires 
+WHERE sk_code IN missing_skills AND pos_code = 'P003';
+
+
+
+
+
+
+
+
+
+
+20.  When a company cannot find any qualified person for a job position, a secondary solution is to find a person who is almost qualified to the job position. Make a “missing-k” list that lists people who miss only k skills for a specified pos code; k < 4.
+
+
+WITH skills as 
+(
+	SELECT sk_code
+	FROM has_skill
+	WHERE per_id = 30
+)
+
+SELECT MAX(pay_range_high), title
+FROM Position NATURAL JOIN Requires
+WHERE sk_code in skills;
+
+
+
+
+21. Suppose there is a new position that has nobody qualified. List the persons who miss the least number of skills that are required by this pos code and report the “least number”.
+
+
+        
+WITH required_skill AS 
+(
+	SELECT sk_code 
+	FROM Requires
+	WHERE pos_code = 'P010'
+ )
+SELECT first_name, last_name, email
+FROM Person NATURAL JOIN Has_Skill;
+
+
+
+
+22. List each of the skill code and the number of people who misses the skill and are in the missing-k list for a given position code in the ascending order of the people counts.
+
+
+
+
+
+
+28.
+
+
+WITH skill_needed AS 
+(
+	SELECT sk_code
+	FROM Job NATURAL JOIN Position NATURAL JOIN Requires
+	WHERE job_code = 'J006'
+)
+SELECT c_code, title 
+FROM Teaches NATURAL JOIN Course 
+WHERE sk_code in skill_needed 
+EXCEPT 
+SELECT c_code, title
+FROM Takes NATURAL JOIN Course
+WHERE per_id = 30 AND complete_data = 'yes';
